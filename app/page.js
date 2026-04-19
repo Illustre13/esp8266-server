@@ -1,30 +1,29 @@
 'use client';
-// app/page.js
 import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  HardHat, Thermometer, Droplets, Wind, Heart,
+  AlertTriangle, MapPin, ExternalLink, Plus, X,
+  Circle, Trash2, Activity, Terminal, BookOpen,
+} from 'lucide-react';
 
-// ── CSS-in-JS tokens ────────────────────────────────
-const T = {
-  bg:       '#0A0E17',
-  surface:  '#111827',
-  surface2: '#1A2234',
-  border:   '#1E2D45',
-  border2:  '#2A3F5F',
-  text:     '#E2E8F0',
-  muted:    '#64748B',
-  amber:    '#F59E0B',
-  amberDim: '#78350F',
-  green:    '#10B981',
-  greenDim: '#064E3B',
-  red:      '#EF4444',
-  redDim:   '#7F1D1D',
-  blue:     '#3B82F6',
-  blueDim:  '#1E3A5F',
-  teal:     '#06B6D4',
+const C = {
+  bg:      '#0f0f0f',
+  surface: '#161616',
+  border:  '#2a2a2a',
+  text:    '#e4e4e4',
+  muted:   '#555',
+  dim:     '#222',
+  green:   '#22c55e',
+  amber:   '#f59e0b',
+  red:     '#ef4444',
+  blue:    '#3b82f6',
+  teal:    '#14b8a6',
 };
 
-// ── Threshold helpers ───────────────────────────────
+const stateColor = { ok: C.green, warn: C.amber, alarm: C.red, idle: C.muted };
+
 function cardState(val, warnAt, alarmAt, reverse = false) {
-  if (val === undefined || val === null) return 'idle';
+  if (val == null) return 'idle';
   if (reverse) {
     if (val <= alarmAt) return 'alarm';
     if (val <= warnAt)  return 'warn';
@@ -35,24 +34,23 @@ function cardState(val, warnAt, alarmAt, reverse = false) {
   return 'ok';
 }
 
-const stateColor = { ok: T.green, warn: T.amber, alarm: T.red, idle: T.muted };
-
-// ── Tiny bar chart ──────────────────────────────────
 function MiniChart({ values, maxVal, color }) {
-  if (!values || values.length === 0) return (
-    <div style={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.muted, fontSize: 11 }}>
-      no history yet
+  if (!values?.length) return (
+    <div style={{ height: 40, display: 'flex', alignItems: 'center', color: C.muted, fontSize: 11 }}>
+      no data
     </div>
   );
   return (
-    <div style={{ height: 48, display: 'flex', alignItems: 'flex-end', gap: 2 }}>
+    <div style={{ height: 40, display: 'flex', alignItems: 'flex-end', gap: 2 }}>
       {values.slice(-20).map((v, i) => {
         const pct = Math.min(1, Math.max(0.04, (v || 0) / maxVal));
         return (
           <div key={i} style={{
-            flex: 1, borderRadius: '2px 2px 0 0',
-            height: Math.round(pct * 48),
-            background: color, opacity: 0.75,
+            flex: 1,
+            height: Math.round(pct * 40),
+            background: color,
+            opacity: 0.6,
+            borderRadius: '1px 1px 0 0',
             transition: 'height .3s',
           }} />
         );
@@ -61,41 +59,41 @@ function MiniChart({ values, maxVal, color }) {
   );
 }
 
-// ── Metric card ─────────────────────────────────────
-function MetricCard({ icon, label, value, display, unit, limit, pct, state }) {
-  const color = stateColor[state] || T.muted;
-  const borderColor = state === 'alarm' ? T.red : state === 'warn' ? T.amber : T.border;
-  const shadow = state === 'alarm' ? `0 0 14px rgba(239,68,68,.2)` : 'none';
+function MetricCard({ Icon, label, value, unit, limit, pct, state }) {
+  const color = stateColor[state] || C.muted;
+  const borderColor = state === 'alarm' ? C.red : state === 'warn' ? C.amber : C.border;
   return (
     <div style={{
-      background: T.surface, border: `1px solid ${borderColor}`,
-      borderRadius: 10, padding: 16, boxShadow: shadow,
-      transition: 'border-color .3s, box-shadow .3s',
+      background: C.surface,
+      border: `1px solid ${borderColor}`,
+      borderRadius: 6,
+      padding: 14,
+      transition: 'border-color .3s',
     }}>
-      <div style={{ fontSize: 10, fontWeight: 600, color: T.muted, letterSpacing: '.8px', textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span>{icon}</span>{label}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+        <Icon size={13} color={C.muted} strokeWidth={1.5} />
+        <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, letterSpacing: '.8px', textTransform: 'uppercase' }}>{label}</span>
       </div>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 32, fontWeight: 500, color, lineHeight: 1 }}>
-        {display ?? '--'}
+      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 28, fontWeight: 400, color, lineHeight: 1 }}>
+        {value ?? '--'}
       </div>
-      <div style={{ fontSize: 12, color: T.muted, marginTop: 4 }}>{unit}</div>
-      <div style={{ fontSize: 10, color: T.border2, marginTop: 3 }}>{limit}</div>
-      <div style={{ height: 3, background: T.border, borderRadius: 2, marginTop: 10, overflow: 'hidden' }}>
-        <div style={{ height: '100%', borderRadius: 2, width: `${pct || 0}%`, background: color, transition: 'width .4s, background .3s' }} />
+      <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>{unit}</div>
+      <div style={{ fontSize: 10, color: C.border, marginTop: 2 }}>{limit}</div>
+      <div style={{ height: 2, background: C.dim, borderRadius: 1, marginTop: 10, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct || 0}%`, background: color, transition: 'width .4s, background .3s' }} />
       </div>
     </div>
   );
 }
 
-// ── Main page ───────────────────────────────────────
 export default function Page() {
-  const [helmets,    setHelmets]    = useState([]);
-  const [selected,   setSelected]   = useState(null);  // helmet object
-  const [serverOk,   setServerOk]   = useState(false);
-  const [clock,      setClock]      = useState('');
-  const [showModal,  setShowModal]  = useState(false);
-  const [modalId,    setModalId]    = useState('');
-  const [log,        setLog]        = useState([{ msg: 'Dashboard connected', cls: 'info', t: new Date().toLocaleTimeString() }]);
+  const [helmets,   setHelmets]   = useState([]);
+  const [selected,  setSelected]  = useState(null);
+  const [serverOk,  setServerOk]  = useState(false);
+  const [clock,     setClock]     = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [modalId,   setModalId]   = useState('');
+  const [log,       setLog]       = useState([{ msg: 'Dashboard connected', cls: 'info', t: new Date().toLocaleTimeString() }]);
   const prevAlertRef  = useRef({});
   const prevOnlineRef = useRef({});
 
@@ -103,28 +101,21 @@ export default function Page() {
     setLog(prev => [...prev.slice(-49), { msg, cls, t: new Date().toLocaleTimeString() }]);
   }
 
-  // clock
   useEffect(() => {
     const iv = setInterval(() => setClock(new Date().toLocaleTimeString('en-US', { hour12: false })), 1000);
     return () => clearInterval(iv);
   }, []);
 
-  // poll
   const fetchAll = useCallback(async () => {
     try {
       const r    = await fetch('/api/helmets');
       const list = await r.json();
       setHelmets(list);
       setServerOk(true);
-
-      // update selected if open
       setSelected(prev => {
         if (!prev) return prev;
-        const fresh = list.find(h => h.id === prev.id);
-        return fresh || prev;
+        return list.find(h => h.id === prev.id) || prev;
       });
-
-      // check alerts + online changes
       list.forEach(h => {
         const wasAlert  = prevAlertRef.current[h.id];
         const wasOnline = prevOnlineRef.current[h.id];
@@ -156,7 +147,7 @@ export default function Page() {
 
   async function removeHelmet() {
     if (!selected) return;
-    if (!confirm(`Remove ${selected.id} from dashboard?`)) return;
+    if (!confirm(`Remove ${selected.id}?`)) return;
     await fetch(`/api/helmets/${selected.id}`, { method: 'DELETE' });
     addLog(`${selected.id} removed`, 'warn');
     setSelected(null);
@@ -166,80 +157,92 @@ export default function Page() {
   function confirmAdd() {
     if (!modalId.trim()) return;
     setShowModal(false);
-    addLog(`${modalId} pre-registered — waiting for data`, 'info');
+    addLog(`${modalId} pre-registered`, 'info');
     setModalId('');
     fetchAll();
   }
 
   const h = selected;
-
-  // metric helpers for selected helmet
-  const tempState = h ? cardState(h.temp, 32,  35,   false) : 'idle';
-  const humState  = h ? cardState(h.hum,  80,  86,   false) : 'idle';
-  const gasState  = h ? cardState(h.gas,  800, 1000, false) : 'idle';
+  const tempState = h ? cardState(h.temp, 32,  35)          : 'idle';
+  const humState  = h ? cardState(h.hum,  80,  86)          : 'idle';
+  const gasState  = h ? cardState(h.gas,  800, 1000)        : 'idle';
   const hrState   = h && h.hr > 0 ? cardState(h.hr, 65, 60, true) : 'idle';
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', fontFamily: "'Inter', sans-serif", fontSize: 14 }}>
+  const statusStyle = (item) => {
+    if (!item.online) return { color: C.muted, label: 'OFFLINE' };
+    if (item.status === 'PANIC' || item.status === 'ALARM') return { color: C.red,   label: item.status };
+    if (item.status === 'WARNING') return { color: C.amber, label: 'WARN' };
+    return { color: C.green, label: 'OK' };
+  };
 
-      {/* ── Topbar ─────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: 56, flexShrink: 0, background: T.surface, borderBottom: `1px solid ${T.border}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: T.amber, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>⛑</div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>Helmet Control Room</div>
-            <div style={{ fontSize: 11, color: T.muted }}>Smart Safety Monitoring System</div>
-          </div>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', fontFamily: "'Inter', sans-serif", fontSize: 14, color: C.text, background: C.bg }}>
+
+      {/* Topbar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', height: 52, flexShrink: 0, background: C.surface, borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <HardHat size={18} color={C.amber} strokeWidth={1.5} />
+          <span style={{ fontSize: 14, fontWeight: 500 }}>Helmet Monitor</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.muted }}>
-            <div style={{ width: 7, height: 7, borderRadius: '50%', background: serverOk ? T.green : T.red, boxShadow: serverOk ? `0 0 6px ${T.green}` : 'none' }} />
-            {serverOk ? 'Server online' : 'Server offline'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.muted }}>
+            <Circle size={7} fill={serverOk ? C.green : C.red} color={serverOk ? C.green : C.red} />
+            {serverOk ? 'online' : 'offline'}
           </div>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: T.muted }}>{clock}</div>
-          <button onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 6, background: T.blueDim, color: T.blue, border: `1px solid ${T.blue}`, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>
-            + Add Helmet
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: C.muted }}>{clock}</span>
+          <button
+            onClick={() => setShowModal(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 4, background: 'transparent', color: C.text, border: `1px solid ${C.border}`, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            <Plus size={13} strokeWidth={1.5} /> Add
           </button>
         </div>
       </div>
 
-      {/* ── Body ──────────────────────────────── */}
+      {/* Body */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
         {/* Sidebar */}
-        <div style={{ width: 260, flexShrink: 0, background: T.surface, borderRight: `1px solid ${T.border}`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 16px 12px', borderBottom: `1px solid ${T.border}`, fontSize: 11, fontWeight: 600, color: T.muted, letterSpacing: '.8px', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            Helmets
-            <span style={{ background: T.surface2, border: `1px solid ${T.border2}`, borderRadius: 10, padding: '1px 7px', fontSize: 11, color: T.text }}>{helmets.length}</span>
+        <div style={{ width: 240, flexShrink: 0, background: C.surface, borderRight: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, letterSpacing: '.8px', textTransform: 'uppercase' }}>Helmets</span>
+            <span style={{ fontSize: 10, color: C.muted }}>{helmets.length}</span>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
             {helmets.length === 0 ? (
-              <div style={{ padding: '20px 12px', color: T.muted, fontSize: 12, textAlign: 'center' }}>No helmets yet.<br />Add one or wait for ESP8266 data.</div>
+              <div style={{ padding: '20px 10px', color: C.muted, fontSize: 12, textAlign: 'center', lineHeight: 1.6 }}>
+                No helmets yet.
+              </div>
             ) : helmets.map(item => {
-              const st = item.online
-                ? (item.status === 'PANIC'   ? { bg: T.redDim,  color: T.red,   label: 'PANIC'   }
-                 : item.status === 'ALARM'   ? { bg: T.redDim,  color: T.red,   label: 'ALARM'   }
-                 : item.status === 'WARNING' ? { bg: T.amberDim, color: T.amber, label: 'WARN'   }
-                 :                             { bg: T.greenDim, color: T.green, label: 'OK'      })
-                : { bg: T.surface2, color: T.muted, label: 'OFFLINE' };
+              const st = statusStyle(item);
               const isActive = h && h.id === item.id;
               return (
-                <div key={item.id} onClick={() => selectHelmet(item.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', marginBottom: 4, border: `1px solid ${isActive ? T.blue : 'transparent'}`, background: isActive ? T.blueDim : 'transparent', transition: 'all .15s' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, background: T.surface2, border: `1px solid ${T.border2}`, flexShrink: 0 }}>⛑</div>
+                <div
+                  key={item.id}
+                  onClick={() => selectHelmet(item.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 9,
+                    padding: '9px 10px', borderRadius: 5, cursor: 'pointer', marginBottom: 2,
+                    border: `1px solid ${isActive ? C.blue : 'transparent'}`,
+                    background: isActive ? '#1a2233' : 'transparent',
+                    transition: 'background .1s',
+                  }}
+                >
+                  <HardHat size={15} color={st.color} strokeWidth={1.5} style={{ flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.id}</div>
-                    <div style={{ fontSize: 11, color: T.muted, marginTop: 1 }}>{item.online ? `Last: ${item.lastSeen}` : 'No signal'}</div>
+                    <div style={{ fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.id}</div>
+                    <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{item.online ? item.lastSeen : 'no signal'}</div>
                   </div>
-                  <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 6px', borderRadius: 4, letterSpacing: '.5px', flexShrink: 0, background: st.bg, color: st.color, textTransform: 'uppercase' }}>{st.label}</span>
+                  <span style={{ fontSize: 9, fontWeight: 600, color: st.color, letterSpacing: '.4px', flexShrink: 0 }}>{st.label}</span>
                 </div>
               );
             })}
           </div>
 
-          <div style={{ padding: 12, borderTop: `1px solid ${T.border}` }}>
-            <div style={{ fontSize: 10, color: T.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.5px' }}>POST data to</div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: T.muted, background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 4, padding: '6px 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ padding: '10px 12px', borderTop: `1px solid ${C.border}` }}>
+            <div style={{ fontSize: 10, color: C.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.5px' }}>POST endpoint</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.muted, background: C.dim, border: `1px solid ${C.border}`, borderRadius: 3, padding: '5px 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {typeof window !== 'undefined' ? window.location.origin : ''}/api/data
             </div>
           </div>
@@ -248,121 +251,142 @@ export default function Page() {
         {/* Detail */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
           {!h ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, color: T.muted }}>
-              <div style={{ fontSize: 56, opacity: .2 }}>⛑</div>
-              <div style={{ fontSize: 16, fontWeight: 500, color: T.text }}>No helmet selected</div>
-              <div style={{ fontSize: 13 }}>Select a helmet from the sidebar or add one</div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 10, color: C.muted }}>
+              <HardHat size={36} strokeWidth={1} color={C.border} />
+              <div style={{ fontSize: 14, color: C.muted }}>Select a helmet</div>
             </div>
           ) : (
             <>
-              {/* header */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
                 <div>
-                  <div style={{ fontSize: 20, fontWeight: 600 }}>{h.id}</div>
-                  <div style={{ fontSize: 12, color: T.muted, marginTop: 3 }}>
-                    {h.online ? `Live · last seen ${h.lastSeen}` : 'Offline — no recent data'}
+                  <div style={{ fontSize: 18, fontWeight: 500 }}>{h.id}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>
+                    {h.online ? `last seen ${h.lastSeen}` : 'offline — no recent data'}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <div style={{ padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 5, background: h.online ? T.greenDim : T.surface2, color: h.online ? T.green : T.muted, border: `1px solid ${h.online ? T.green : T.border}` }}>
-                    <span>●</span> {h.online ? 'Online' : 'Offline'}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: h.online ? C.green : C.muted }}>
+                    <Circle size={7} fill={h.online ? C.green : C.muted} color={h.online ? C.green : C.muted} />
+                    {h.online ? 'online' : 'offline'}
                   </div>
-                  <button onClick={removeHelmet} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', background: T.redDim, color: T.red, border: `1px solid ${T.red}` }}>
-                    ✕ Remove
+                  <button
+                    onClick={removeHelmet}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', background: 'transparent', color: C.red, border: `1px solid ${C.border}` }}
+                  >
+                    <Trash2 size={12} strokeWidth={1.5} /> Remove
                   </button>
                 </div>
               </div>
 
-              {/* alert banner */}
+              {/* Alert banner */}
               {(h.alert === 1 || h.status === 'PANIC') && (
-                <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 20, fontSize: 13, fontWeight: 600, textAlign: 'center', letterSpacing: '.5px', border: `1px solid ${T.red}`, background: T.redDim, color: '#fca5a5' }}>
-                  ⚠ PANIC / ALERT TRIGGERED — IMMEDIATE RESPONSE REQUIRED
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 5, marginBottom: 18, fontSize: 12, fontWeight: 600, border: `1px solid ${C.red}`, color: C.red }}>
+                  <AlertTriangle size={14} strokeWidth={2} />
+                  PANIC / ALERT TRIGGERED — IMMEDIATE RESPONSE REQUIRED
                 </div>
               )}
 
-              {/* metrics */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px,1fr))', gap: 12, marginBottom: 24 }}>
-                <MetricCard icon="🌡" label="Temperature" display={h.temp?.toFixed(1)} unit="°C" limit="warn >32 · alarm >35" pct={Math.min(100,(h.temp/50)*100)} state={tempState} />
-                <MetricCard icon="💧" label="Humidity"    display={h.hum?.toFixed(1)}  unit="%" limit="warn >80 · alarm >86" pct={h.hum}  state={humState} />
-                <MetricCard icon="💨" label="Gas (ppm)"   display={h.gas ? Math.round(h.gas) : '--'} unit="ppm" limit="warn >800 · alarm >1000" pct={Math.min(100,(h.gas/1500)*100)} state={gasState} />
-                <MetricCard icon="❤️" label="Heart Rate"  display={h.hr || '--'} unit="bpm" limit="normal 60–100" pct={h.hr ? Math.min(100,((h.hr-40)/100)*100) : 0} state={hrState} />
-                <div style={{ background: T.surface, border: `1px solid ${h.alert === 1 ? T.red : T.border}`, borderRadius: 10, padding: 16 }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: T.muted, letterSpacing: '.8px', textTransform: 'uppercase', marginBottom: 10 }}>🔴 Alert / Panic</div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 500, color: h.alert === 1 ? T.red : T.green }}>
+              {/* Metrics */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px,1fr))', gap: 10, marginBottom: 20 }}>
+                <MetricCard Icon={Thermometer} label="Temp"       value={h.temp?.toFixed(1)} unit="°C"  limit="warn 32 · alarm 35"   pct={Math.min(100,(h.temp/50)*100)}         state={tempState} />
+                <MetricCard Icon={Droplets}    label="Humidity"   value={h.hum?.toFixed(1)}  unit="%"   limit="warn 80 · alarm 86"    pct={h.hum}                                 state={humState} />
+                <MetricCard Icon={Wind}        label="Gas"        value={h.gas ? Math.round(h.gas) : '--'} unit="ppm" limit="warn 800 · alarm 1000" pct={Math.min(100,(h.gas/1500)*100)} state={gasState} />
+                <MetricCard Icon={Heart}       label="Heart Rate" value={h.hr || '--'}        unit="bpm" limit="normal 60–100"          pct={h.hr ? Math.min(100,((h.hr-40)/100)*100) : 0} state={hrState} />
+                <div style={{ background: C.surface, border: `1px solid ${h.alert === 1 ? C.red : C.border}`, borderRadius: 6, padding: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                    <AlertTriangle size={13} color={C.muted} strokeWidth={1.5} />
+                    <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, letterSpacing: '.8px', textTransform: 'uppercase' }}>Alert</span>
+                  </div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 400, color: h.alert === 1 ? C.red : C.green }}>
                     {h.alert === 1 ? 'ACTIVE' : 'CLEAR'}
                   </div>
-                  <div style={{ fontSize: 12, color: T.muted, marginTop: 4 }}>{h.alert === 1 ? 'panic triggered' : 'all normal'}</div>
-                  <div style={{ fontSize: 10, color: T.border2, marginTop: 3 }}>AL field · 0=clear · 1=panic</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>{h.alert === 1 ? 'panic triggered' : 'all normal'}</div>
+                  <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>0=clear · 1=panic</div>
                 </div>
               </div>
 
               {/* GPS */}
-              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: 16, marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 8, background: T.blueDim, border: `1px solid ${T.blue}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📍</div>
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, padding: 14, marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <MapPin size={14} color={C.muted} strokeWidth={1.5} />
                   <div>
-                    <div style={{ fontSize: 11, color: T.muted, marginBottom: 3 }}>GPS Location</div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 500, color: T.teal }}>
-                      {(h.lat && h.lon && (h.lat !== 0 || h.lon !== 0)) ? `${h.lat?.toFixed(6)}, ${h.lon?.toFixed(6)}` : 'No GPS fix yet'}
+                    <div style={{ fontSize: 10, color: C.muted, marginBottom: 2 }}>GPS</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: C.teal }}>
+                      {(h.lat && h.lon && (h.lat !== 0 || h.lon !== 0))
+                        ? `${h.lat?.toFixed(6)}, ${h.lon?.toFixed(6)}`
+                        : 'no fix'}
                     </div>
                   </div>
                 </div>
                 {h.lat !== 0 && h.lon !== 0 && (
-                  <a href={`https://maps.google.com/?q=${h.lat},${h.lon}`} target="_blank" rel="noreferrer"
-                    style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500, background: T.blueDim, color: T.blue, border: `1px solid ${T.blue}`, textDecoration: 'none' }}>
-                    ↗ Google Maps
+                  <a
+                    href={`https://maps.google.com/?q=${h.lat},${h.lon}`}
+                    target="_blank" rel="noreferrer"
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 4, fontSize: 11, color: C.blue, border: `1px solid ${C.border}`, textDecoration: 'none' }}
+                  >
+                    <ExternalLink size={11} strokeWidth={1.5} /> Maps
                   </a>
                 )}
               </div>
 
-              {/* charts */}
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: T.muted, letterSpacing: '.8px', textTransform: 'uppercase', marginBottom: 12 }}>Recent Readings</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px,1fr))', gap: 12 }}>
+              {/* Charts */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                  <Activity size={13} color={C.muted} strokeWidth={1.5} />
+                  <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, letterSpacing: '.8px', textTransform: 'uppercase' }}>Recent Readings</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px,1fr))', gap: 10 }}>
                   {[
-                    { label: 'Temperature', key: 'temp', max: 50,   color: T.teal  },
-                    { label: 'Gas ppm',     key: 'gas',  max: 1500, color: T.amber },
-                    { label: 'Humidity',    key: 'hum',  max: 100,  color: T.blue  },
-                    { label: 'Heart Rate',  key: 'hr',   max: 140,  color: T.green },
+                    { label: 'Temperature', key: 'temp', max: 50,   color: C.teal  },
+                    { label: 'Gas ppm',     key: 'gas',  max: 1500, color: C.amber },
+                    { label: 'Humidity',    key: 'hum',  max: 100,  color: C.blue  },
+                    { label: 'Heart Rate',  key: 'hr',   max: 140,  color: C.green },
                   ].map(({ label, key, max, color }) => (
-                    <div key={key} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: 16 }}>
-                      <div style={{ fontSize: 11, color: T.muted, marginBottom: 10 }}>{label} (last 20)</div>
+                    <div key={key} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, padding: 14 }}>
+                      <div style={{ fontSize: 10, color: C.muted, marginBottom: 8 }}>{label}</div>
                       <MiniChart values={h.history?.map(r => r[key]) || []} maxVal={max} color={color} />
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* log */}
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: T.muted, letterSpacing: '.8px', textTransform: 'uppercase', marginBottom: 12 }}>Event Log</div>
-                <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: '12px 16px', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, maxHeight: 160, overflowY: 'auto', lineHeight: 2 }}>
+              {/* Log */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                  <Terminal size={13} color={C.muted} strokeWidth={1.5} />
+                  <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, letterSpacing: '.8px', textTransform: 'uppercase' }}>Event Log</span>
+                </div>
+                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, padding: '10px 14px', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, maxHeight: 140, overflowY: 'auto', lineHeight: 1.9 }}>
                   {log.map((l, i) => (
-                    <div key={i} style={{ color: l.cls === 'err' ? T.red : l.cls === 'ok' ? T.green : l.cls === 'warn' ? T.amber : T.blue }}>
+                    <div key={i} style={{ color: l.cls === 'err' ? C.red : l.cls === 'ok' ? C.green : l.cls === 'warn' ? C.amber : C.blue }}>
                       [{l.t}] {l.msg}
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* API reference */}
+              {/* API Reference */}
               <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: T.muted, letterSpacing: '.8px', textTransform: 'uppercase', marginBottom: 12 }}>REST API Reference</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px,1fr))', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                  <BookOpen size={13} color={C.muted} strokeWidth={1.5} />
+                  <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, letterSpacing: '.8px', textTransform: 'uppercase' }}>API Reference</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px,1fr))', gap: 8 }}>
                   {[
-                    { method: 'POST',   color: T.blue,  bg: T.blueDim,  path: '/api/data',                   desc: 'ESP8266 posts sensor data here. Body: { id, temp, hum, gas, hr, alert, lat, lon }' },
-                    { method: 'GET',    color: T.green, bg: T.greenDim, path: '/api/helmets',                 desc: 'Returns all helmets with latest readings and online status' },
-                    { method: 'GET',    color: T.green, bg: T.greenDim, path: '/api/helmets/:id',             desc: 'Returns one helmet with full reading history' },
-                    { method: 'GET',    color: T.green, bg: T.greenDim, path: '/api/helmets/:id/history',     desc: 'Returns just the history array (last 50 readings)' },
-                    { method: 'DELETE', color: T.red,   bg: T.redDim,   path: '/api/helmets/:id',             desc: 'Removes a helmet from the dashboard' },
-                    { method: 'GET',    color: T.green, bg: T.greenDim, path: '/api/status',                  desc: 'Server health check — uptime, helmet count, timestamp' },
+                    { method: 'POST',   color: C.blue,  path: '/api/data',               desc: 'ESP8266 posts sensor data. Body: { id, temp, hum, gas, hr, alert, lat, lon }' },
+                    { method: 'GET',    color: C.green, path: '/api/helmets',             desc: 'All helmets with latest readings and online status' },
+                    { method: 'GET',    color: C.green, path: '/api/helmets/:id',         desc: 'Single helmet with full reading history' },
+                    { method: 'GET',    color: C.green, path: '/api/helmets/:id/history', desc: 'History array only (last 50 readings)' },
+                    { method: 'DELETE', color: C.red,   path: '/api/helmets/:id',         desc: 'Remove a helmet from the dashboard' },
+                    { method: 'GET',    color: C.green, path: '/api/status',              desc: 'Server health — uptime, count, timestamp' },
                   ].map((api, i) => (
-                    <div key={i} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: '12px 14px' }}>
-                      <div>
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, marginRight: 8, fontFamily: "'JetBrains Mono', monospace", background: api.bg, color: api.color }}>{api.method}</span>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}>{api.path}</span>
+                    <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 5, padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: api.color, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.5px' }}>{api.method}</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: C.text }}>{api.path}</span>
                       </div>
-                      <div style={{ fontSize: 11, color: T.muted, marginTop: 6 }}>{api.desc}</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>{api.desc}</div>
                     </div>
                   ))}
                 </div>
@@ -372,26 +396,31 @@ export default function Page() {
         </div>
       </div>
 
-      {/* ── Add helmet modal ───────────────────── */}
+      {/* Modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: T.surface, border: `1px solid ${T.border2}`, borderRadius: 12, padding: 24, width: 360, boxShadow: '0 20px 60px rgba(0,0,0,.5)' }}>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Add Helmet</div>
-            <div style={{ fontSize: 12, color: T.muted, marginBottom: 20 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: 24, width: 340 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <span style={{ fontSize: 14, fontWeight: 500 }}>Add Helmet</span>
+              <button onClick={() => { setShowModal(false); setModalId(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, padding: 0 }}>
+                <X size={16} strokeWidth={1.5} />
+              </button>
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>
               Pre-register a helmet ID. It will appear live once the ESP8266 starts posting data.
             </div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: T.muted, letterSpacing: '.5px', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Helmet ID</label>
+            <label style={{ fontSize: 10, fontWeight: 600, color: C.muted, letterSpacing: '.5px', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Helmet ID</label>
             <input
               value={modalId}
               onChange={e => setModalId(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && confirmAdd()}
               placeholder="e.g. Helmet-1"
               autoFocus
-              style={{ width: '100%', padding: '9px 12px', borderRadius: 6, background: T.surface2, border: `1px solid ${T.border2}`, color: T.text, fontSize: 13, fontFamily: "'JetBrains Mono', monospace", marginBottom: 20, outline: 'none' }}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 4, background: C.dim, border: `1px solid ${C.border}`, color: C.text, fontSize: 12, fontFamily: "'JetBrains Mono', monospace", marginBottom: 16, outline: 'none' }}
             />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => { setShowModal(false); setModalId(''); }} style={{ padding: '7px 16px', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', background: T.surface2, color: T.muted, border: `1px solid ${T.border}` }}>Cancel</button>
-              <button onClick={confirmAdd} style={{ padding: '7px 16px', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500, background: T.blue, color: '#fff', border: 'none' }}>Add Helmet</button>
+              <button onClick={() => { setShowModal(false); setModalId(''); }} style={{ padding: '6px 14px', borderRadius: 4, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', background: 'transparent', color: C.muted, border: `1px solid ${C.border}` }}>Cancel</button>
+              <button onClick={confirmAdd} style={{ padding: '6px 14px', borderRadius: 4, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500, background: C.blue, color: '#fff', border: 'none' }}>Add</button>
             </div>
           </div>
         </div>
