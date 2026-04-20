@@ -59,6 +59,68 @@ function MiniChart({ values, maxVal, color }) {
   );
 }
 
+function CombinedLineChart({ history }) {
+  const W = 800, H = 280, PAD = { top: 12, right: 12, bottom: 32, left: 44 };
+  const inner = { w: W - PAD.left - PAD.right, h: H - PAD.top - PAD.bottom };
+  const pts = history.slice(-50);
+  if (pts.length < 2) return (
+    <div style={{ height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, fontSize: 11 }}>
+      no data yet
+    </div>
+  );
+
+  const series = [
+    { key: 'temp', color: C.teal,  min: 0,  max: 50   },
+    { key: 'hum',  color: C.blue,  min: 0,  max: 100  },
+    { key: 'gas',  color: C.amber, min: 0,  max: 1500 },
+    { key: 'hr',   color: C.green, min: 0,  max: 140  },
+  ];
+
+  const xStep = inner.w / (pts.length - 1);
+
+  function toPath(key, min, max) {
+    return pts.map((p, i) => {
+      const v = p[key] ?? 0;
+      const x = PAD.left + i * xStep;
+      const y = PAD.top + inner.h - ((v - min) / (max - min)) * inner.h;
+      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+  }
+
+  const yTicks = [0, 25, 50, 75, 100];
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 280, display: 'block' }}>
+      {yTicks.map(pct => {
+        const y = PAD.top + inner.h * (1 - pct / 100);
+        return (
+          <g key={pct}>
+            <line x1={PAD.left} x2={PAD.left + inner.w} y1={y} y2={y} stroke={C.border} strokeWidth={0.5} />
+            <text x={PAD.left - 4} y={y + 3.5} textAnchor="end" fontSize={8} fill={C.muted}>{pct}%</text>
+          </g>
+        );
+      })}
+      {pts.filter((_, i) => i % Math.max(1, Math.floor(pts.length / 6)) === 0).map((p, _, arr) => {
+        const idx = pts.indexOf(p);
+        const x = PAD.left + idx * xStep;
+        return (
+          <text key={idx} x={x} y={H - 4} textAnchor="middle" fontSize={8} fill={C.muted}>{p.t}</text>
+        );
+      })}
+      {series.map(({ key, color, min, max }) => (
+        <path key={key} d={toPath(key, min, max)} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" opacity={0.85} />
+      ))}
+      {series.map(({ key, color, min, max }) => {
+        const last = pts[pts.length - 1];
+        const v = last[key] ?? 0;
+        const x = PAD.left + (pts.length - 1) * xStep;
+        const y = PAD.top + inner.h - ((v - min) / (max - min)) * inner.h;
+        return <circle key={key} cx={x} cy={y} r={3} fill={color} />;
+      })}
+    </svg>
+  );
+}
+
 function MetricCard({ Icon, label, value, unit, limit, pct, state }) {
   const color = stateColor[state] || C.muted;
   const borderColor = state === 'alarm' ? C.red : state === 'warn' ? C.amber : C.border;
@@ -293,44 +355,20 @@ export default function Page() {
                 <MetricCard Icon={Droplets}    label="Humidity"   value={h.hum?.toFixed(1)}  unit="%"   limit="warn 80 · alarm 86"    pct={h.hum}                                 state={humState} />
                 <MetricCard Icon={Wind}        label="Gas"        value={h.gas ? Math.round(h.gas) : '--'} unit="ppm" limit="warn 800 · alarm 1000" pct={Math.min(100,(h.gas/1500)*100)} state={gasState} />
                 <MetricCard Icon={Heart}       label="Heart Rate" value={h.hr || '--'}        unit="bpm" limit="normal 60–100"          pct={h.hr ? Math.min(100,((h.hr-40)/100)*100) : 0} state={hrState} />
-                <div style={{ background: C.surface, border: `1px solid ${h.alert === 1 ? C.red : C.border}`, borderRadius: 6, padding: 14 }}>
+                <div style={{ background: C.surface, border: `1px solid ${h.status === 'PANIC' ? C.red : h.status === 'ALARM' ? C.amber : C.border}`, borderRadius: 6, padding: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
                     <AlertTriangle size={13} color={C.muted} strokeWidth={1.5} />
                     <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, letterSpacing: '.8px', textTransform: 'uppercase' }}>Alert</span>
                   </div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 400, color: h.alert === 1 ? C.red : C.green }}>
-                    {h.alert === 1 ? 'ACTIVE' : 'CLEAR'}
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 400, color: h.status === 'PANIC' ? C.red : h.status === 'ALARM' ? C.amber : C.green }}>
+                    {h.status === 'PANIC' || h.status === 'ALARM' ? 'ACTIVE' : 'CLEAR'}
                   </div>
-                  <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>{h.alert === 1 ? 'panic triggered' : 'all normal'}</div>
-                  <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>0=clear · 1=panic</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>{h.status === 'PANIC' ? 'panic triggered' : h.status === 'ALARM' ? 'alarm triggered' : 'all normal'}</div>
+                  <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>0=clear · &gt;0=panic · sensors=alarm</div>
                 </div>
               </div>
 
-              {/* GPS */}
-              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, padding: 14, marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <MapPin size={14} color={C.muted} strokeWidth={1.5} />
-                  <div>
-                    <div style={{ fontSize: 10, color: C.muted, marginBottom: 2 }}>GPS</div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: C.teal }}>
-                      {(h.lat && h.lon && (h.lat !== 0 || h.lon !== 0))
-                        ? `${h.lat?.toFixed(6)}, ${h.lon?.toFixed(6)}`
-                        : 'no fix'}
-                    </div>
-                  </div>
-                </div>
-                {h.lat !== 0 && h.lon !== 0 && (
-                  <a
-                    href={`https://maps.google.com/?q=${h.lat},${h.lon}`}
-                    target="_blank" rel="noreferrer"
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 4, fontSize: 11, color: C.blue, border: `1px solid ${C.border}`, textDecoration: 'none' }}
-                  >
-                    <ExternalLink size={11} strokeWidth={1.5} /> Maps
-                  </a>
-                )}
-              </div>
-
-              {/* Charts */}
+                            {/* Charts */}
               <div style={{ marginBottom: 20 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                   <Activity size={13} color={C.muted} strokeWidth={1.5} />
@@ -350,6 +388,72 @@ export default function Page() {
                   ))}
                 </div>
               </div>
+              
+              {/* Combined Line Chart */}
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, padding: 14, marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Activity size={13} color={C.muted} strokeWidth={1.5} />
+                    <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, letterSpacing: '.8px', textTransform: 'uppercase' }}>Sensor History</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    {[
+                      { label: 'Temp °C',  color: C.teal  },
+                      { label: 'Hum %',    color: C.blue  },
+                      { label: 'Gas ppm',  color: C.amber },
+                      { label: 'HR bpm',   color: C.green },
+                    ].map(({ label, color }) => (
+                      <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div style={{ width: 18, height: 2, background: color, borderRadius: 1 }} />
+                        <span style={{ fontSize: 10, color: C.muted }}>{label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <CombinedLineChart history={h.history || []} />
+              </div>
+              
+              {/* GPS */}
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, padding: 14, marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <MapPin size={13} color={C.muted} strokeWidth={1.5} />
+                    <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, letterSpacing: '.8px', textTransform: 'uppercase' }}>GPS</span>
+                  </div>
+                  {h.lat !== 0 && h.lon !== 0 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: C.teal }}>
+                        {h.lat.toFixed(6)}, {h.lon.toFixed(6)}
+                      </span>
+                      <a
+                        href={`https://maps.google.com/?q=${h.lat},${h.lon}`}
+                        target="_blank" rel="noreferrer"
+                        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 4, fontSize: 10, color: C.blue, border: `1px solid ${C.border}`, textDecoration: 'none' }}
+                      >
+                        <ExternalLink size={10} strokeWidth={1.5} /> Maps
+                      </a>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: 11, color: C.muted }}>GPS not connected</span>
+                  )}
+                </div>
+                {h.lat !== 0 && h.lon !== 0 ? (
+                  <iframe
+                    key={`${h.lat}-${h.lon}`}
+                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${h.lon - 0.005},${h.lat - 0.005},${h.lon + 0.005},${h.lat + 0.005}&layer=mapnik&marker=${h.lat},${h.lon}`}
+                    style={{ width: '100%', height: 220, border: 'none', borderRadius: 4, filter: 'invert(90%) hue-rotate(180deg)' }}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div style={{ height: 220, borderRadius: 4, background: C.dim, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, border: `1px dashed ${C.border}` }}>
+                    <MapPin size={28} color={C.border} strokeWidth={1} />
+                    <span style={{ fontSize: 11, color: C.muted }}>Waiting for GPS fix...</span>
+                    <span style={{ fontSize: 10, color: '#333' }}>lat: 0.000000 · lon: 0.000000</span>
+                  </div>
+                )}
+              </div>
+
+
 
               {/* Log */}
               <div style={{ marginBottom: 20 }}>
