@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────
 // Smart Safety Helmet — ESP8266 Controller Unit
 // HC-06 → ESP8266 → Next.js API
-// MODE: Station — connects to your hotspot
+// FIXED: stable serial + clean parsing + no duplication
 // ─────────────────────────────────────────────────
 
 #include <SoftwareSerial.h>
@@ -9,14 +9,15 @@
 #include <ESP8266HTTPClient.h>
 #include <WiFiClient.h>
 
-// ── Your Hotspot Credentials ────────────────────
-const char* sta_ssid     = "ITH";
-const char* sta_password = "Illustre13";
+// ── Access Point ────────────────────────────────
+const char* ap_ssid = "HelmetMonitor";
+const char* ap_password = "helmet123";
 
 // ── Backend API ─────────────────────────────────
-// Replace with the LAN IP of the machine running Next.js on your hotspot.
-// Run `ipconfig` (Windows) or `ifconfig` (Mac/Linux) on that machine to find it.
-const char* apiUrl = "http://192.168.x.x:3000/api/data";
+// const char* apiUrl = "https://esp8266-server.vercel.app/api/data";
+// const char* apiUrl = "http://localhost:3000/api/data";
+const char* apiUrl = "http://192.168.4.2:3000/api/data";
+// const char* apiUrl = "http://localhost:3000";
 
 // ── HC-06 Bluetooth (RX, TX) ───────────────────
 SoftwareSerial hc06(D5, D6);
@@ -38,71 +39,21 @@ const long POST_INTERVAL = 3000;
 
 // ────────────────────────────────────────────────
 void setup() {
-  Serial.begin(115200);
-  hc06.begin(9600);
+  Serial.begin(115200);     // Debug
+  hc06.begin(9600);         // HC-06 baud rate
 
   Serial.println("\nStarting Helmet System...");
 
-  // Scan first so we can confirm the SSID is visible
-  Serial.println("Scanning networks...");
-  int n = WiFi.scanNetworks();
-  bool found = false;
-  for (int i = 0; i < n; i++) {
-    Serial.println("  " + WiFi.SSID(i) + "  CH:" + WiFi.channel(i) + "  RSSI:" + WiFi.RSSI(i));
-    if (WiFi.SSID(i) == String(sta_ssid)) found = true;
-  }
+  // AP Mode
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(ap_ssid, ap_password);
 
-  if (!found) {
-    Serial.println("WARNING: SSID '" + String(sta_ssid) + "' not found in scan!");
-    Serial.println("Check: hotspot is ON, band is 2.4 GHz, name matches exactly.");
-  }
-
-  // Connect
-  WiFi.persistent(false);
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(sta_ssid, sta_password);
-
-  Serial.print("Connecting to WiFi");
-  unsigned long t0 = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - t0 < 30000) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("\nWiFi connected! IP: " + WiFi.localIP().toString());
-  } else {
-    Serial.print("\nWiFi FAILED — status: ");
-    Serial.println(WiFi.status());
-  }
-
+  Serial.println("AP Started: HelmetMonitor");
   Serial.println("Waiting for Bluetooth data...");
 }
+
 // ────────────────────────────────────────────────
 void loop() {
-  // Reconnect if dropped (throttled to once every 15s)
-  static unsigned long lastReconnectAttempt = 0;
-  if (WiFi.status() != WL_CONNECTED && millis() - lastReconnectAttempt > 15000) {
-    lastReconnectAttempt = millis();
-    Serial.print("WiFi lost — reconnecting (status=");
-    Serial.print(WiFi.status());
-    Serial.println(")...");
-    WiFi.disconnect();
-    delay(100);
-    WiFi.begin(sta_ssid, sta_password);
-    unsigned long t0 = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 10000) {
-      delay(500);
-      Serial.print(".");
-    }
-    if (WiFi.status() == WL_CONNECTED) {
-      Serial.println("\nReconnected! IP: " + WiFi.localIP().toString());
-    } else {
-      Serial.print("\nReconnect failed — status: ");
-      Serial.println(WiFi.status());
-    }
-  }
-
   readHC06();
 
   if (millis() - lastPost >= POST_INTERVAL) {
@@ -132,10 +83,6 @@ void readHC06() {
       if (incoming.length() > 5) {
 
         Serial.println("BT RAW: " + incoming);
-
-        // If STM32 doubled the packet, keep only the last complete frame
-        int secondT = incoming.lastIndexOf("T:");
-        if (secondT > 0) incoming = incoming.substring(secondT);
 
         float t = 0, h = 0, g = 0, lat = 0, lon = 0;
         int hr = 0, al = 0;
@@ -175,8 +122,8 @@ void readHC06() {
 // ────────────────────────────────────────────────
 void postData() {
 
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("WiFi not connected — skipping POST");
+  if (WiFi.softAPgetStationNum() < 1) {
+    Serial.println("No client connected to AP");
     return;
   }
 

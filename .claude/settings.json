@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(yarn add *)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -X POST http://localhost:3000/api/data -H \"Content-Type: application/json\" -d \"{\\\\\"id\\\\\":\\\\\"Helmet-1\\\\\",\\\\\"temp\\\\\":29.5,\\\\\"hum\\\\\":55.0,\\\\\"gas\\\\\":1200,\\\\\"hr\\\\\":72,\\\\\"alert\\\\\":0,\\\\\"lat\\\\\":0,\\\\\"lon\\\\\":0}\")",
+      "Bash(npm list *)",
+      "Bash(netstat -ano)",
+      "Bash(curl -s -X POST http://localhost:3003/api/data -H \"Content-Type: application/json\" -d \"{\\\\\"id\\\\\":\\\\\"Helmet-1\\\\\",\\\\\"temp\\\\\":29.5,\\\\\"hum\\\\\":55.0,\\\\\"gas\\\\\":1200,\\\\\"hr\\\\\":72,\\\\\"alert\\\\\":0,\\\\\"lat\\\\\":0,\\\\\"lon\\\\\":0}\")",
+      "Bash(curl -s http://localhost:27017)"
+    ]
+  }
+}
